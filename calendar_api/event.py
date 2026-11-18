@@ -107,8 +107,24 @@ async def update_single_event(
             student_id_arg = created_student["id"]
 
     event_type_arg = event_update.event_type if "event_type" in fields_set else ...
-    if event_type_arg is ... and created_student is not None and not event.get("event_type"):
-        event_type_arg = "individual"
+    group_id_arg = event_update.group_id if "group_id" in fields_set else ...
+
+    # Авто-определение и очистка старых привязок при смене вида события (бронь <-> individual <-> group)
+    if event_type_arg is ...:
+        if group_id_arg is not ... and group_id_arg is not None:
+            event_type_arg = "group"
+        elif student_id_arg is not ... and student_id_arg is not None:
+            event_type_arg = "individual"
+
+    if event_type_arg == "group" and student_id_arg is ...:
+        student_id_arg = None
+    elif event_type_arg == "individual" and group_id_arg is ...:
+        group_id_arg = None
+    elif event_type_arg is None and "event_type" in fields_set:
+        if student_id_arg is ...:
+            student_id_arg = None
+        if group_id_arg is ...:
+            group_id_arg = None
 
     updated = await db.update_single_event(
         event_id=id,
@@ -117,7 +133,7 @@ async def update_single_event(
         title=event_update.title,
         event_type=event_type_arg,
         student_id=student_id_arg,
-        group_id=event_update.group_id if "group_id" in fields_set else ...,
+        group_id=group_id_arg,
         trainer_id=event_update.trainer_id if "trainer_id" in fields_set else ...,
         send_poll=event_update.send_poll,
         poll_send_time=event_update.poll_send_time if "poll_send_time" in fields_set else ...,
@@ -175,15 +191,31 @@ async def update_recurring_event(
             student_id_arg = created_student["id"]
 
     event_type_arg = event_update.event_type if "event_type" in fields_set else ...
-    if event_type_arg is ... and created_student is not None and not event.get("event_type"):
-        event_type_arg = "individual"
+    group_id_arg = event_update.group_id if "group_id" in fields_set else ...
+
+    # Авто-определение и очистка старых привязок при смене вида события (бронь <-> individual <-> group)
+    if event_type_arg is ...:
+        if group_id_arg is not ... and group_id_arg is not None:
+            event_type_arg = "group"
+        elif student_id_arg is not ... and student_id_arg is not None:
+            event_type_arg = "individual"
+
+    if event_type_arg == "group" and student_id_arg is ...:
+        student_id_arg = None
+    elif event_type_arg == "individual" and group_id_arg is ...:
+        group_id_arg = None
+    elif event_type_arg is None and "event_type" in fields_set:
+        if student_id_arg is ...:
+            student_id_arg = None
+        if group_id_arg is ...:
+            group_id_arg = None
 
     updated = await db.update_recurring_event_title(
         event_id=id,
         title=event_update.title,
         event_type=event_type_arg,
         student_id=student_id_arg,
-        group_id=event_update.group_id if "group_id" in fields_set else ...,
+        group_id=group_id_arg,
         trainer_id=event_update.trainer_id if "trainer_id" in fields_set else ...,
         send_poll=event_update.send_poll,
         poll_send_time=event_update.poll_send_time if "poll_send_time" in fields_set else ...,

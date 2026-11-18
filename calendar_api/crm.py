@@ -369,7 +369,71 @@ async def list_trainer_rent_payments(
     )
 
 
-# ─── 4. УПРАВЛЕНИЕ ПРАВАМИ ТРЕНЕРОВ В КАЛЕНДАРЕ ──────────────────────────────
+# ─── 4. СПИСОК ТРЕНЕРОВ И УПРАВЛЕНИЕ ПРАВАМИ В КАЛЕНДАРЕ ─────────────────────
+
+@router.get("/trainers")
+async def list_all_trainers(
+    calendar_id: Optional[str] = Query(None, description="Если передан calendar_id, дополняет правами в этом календаре"),
+    telegram_id: int = Header(..., alias="X-Telegram-Id"),
+):
+    """
+    Возвращает список всех тренеров/пользователей из calendar_users.
+    Если передан calendar_id, к каждому тренеру добавляются его права в этом календаре
+    (role, can_edit_schedule, employment_type, is_member).
+    """
+    users = await db.get_all_calendar_users()
+    if not calendar_id:
+        return users
+
+    members = await db.get_calendar_members(calendar_id)
+    members_map = {m["telegram_id"]: m for m in members}
+    result = []
+    for u in users:
+        entry = dict(u)
+        m = members_map.get(u["telegram_id"])
+        entry["is_member"] = m is not None
+        entry["role"] = m["role"] if m else None
+        entry["can_edit_schedule"] = m["can_edit_schedule"] if m else None
+        entry["employment_type"] = m["employment_type"] if m else None
+        result.append(entry)
+    return result
+
+
+@router.get("/calendars/{calendar_id}/members")
+async def list_calendar_members_detailed(
+    calendar_id: str,
+    telegram_id: int = Header(..., alias="X-Telegram-Id"),
+):
+    """
+    Возвращает всех участников (тренеров и админов) конкретного календаря
+    вместе с их профилем (ФИО, телефон, фото, bio) и правами (role, can_edit_schedule, employment_type).
+    """
+    has_access = await db.check_member_access(calendar_id, telegram_id)
+    if not has_access:
+        raise HTTPException(status_code=403, detail="You do not have access to this calendar")
+
+    members = await db.get_calendar_members(calendar_id)
+    users = await db.get_all_calendar_users()
+    users_map = {u["telegram_id"]: u for u in users}
+
+    result = []
+    for m in members:
+        u = users_map.get(m["telegram_id"], {})
+        result.append({
+            "calendar_id": calendar_id,
+            "telegram_id": m["telegram_id"],
+            "full_name": u.get("full_name", f"User {m['telegram_id']}"),
+            "username": u.get("username"),
+            "phone": u.get("phone"),
+            "bio": u.get("bio"),
+            "photo_url": u.get("photo_url"),
+            "is_independent": u.get("is_independent", False),
+            "role": m["role"],
+            "can_edit_schedule": m["can_edit_schedule"],
+            "employment_type": m["employment_type"],
+        })
+    return result
+
 
 @router.patch("/calendars/{calendar_id}/members/{member_telegram_id}")
 async def update_calendar_member_permissions(
